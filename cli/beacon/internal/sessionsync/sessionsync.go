@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/asymptote-labs/agent-beacon/cli/beacon/internal/atomicfile"
 	"github.com/asymptote-labs/agent-beacon/cli/beacon/internal/endpoint/schema"
 	"github.com/asymptote-labs/agent-beacon/cli/beacon/internal/endpoint/writer"
 	"github.com/asymptote-labs/agent-beacon/cli/beacon/internal/sessionfs"
@@ -92,11 +93,9 @@ func (f StateFile[S]) Save(path string, s *S) error {
 	if err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	// Each save writes its own temporary file. A fixed name let two sweeps saving one cursor at
+	// once write into the same file, so one rename failed and the other could publish a mix of both.
+	return atomicfile.Write(path, data, 0o600)
 }
 
 // Update loads the file at path, lets mutate change it, and saves it when mutate reports a change,
