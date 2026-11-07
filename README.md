@@ -27,14 +27,19 @@
 </p>
 
 <p align="center">
- <a href="https://www.star-history.com/asymptote-labs/agent-beacon">
+ <a href="https://trendshift.io/repositories/30512?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-30512" target="_blank" rel="noopener noreferrer">
+  <img src="https://trendshift.io/api/badge/repositories/30512" alt="Asymptote-Labs%2Fagent-beacon | Trendshift" width="250" height="55" />
+ </a>
+ <a href="https://www.producthunt.com/products/asymptotelabs?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_campaign=badge-beacon-sh" target="_blank" rel="noopener noreferrer">
   <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=Asymptote-Labs/agent-beacon&type=trending&theme=dark&v=2" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=Asymptote-Labs/agent-beacon&type=trending&v=2" />
-   <img alt="GitHub Trending Repository of the Day" src="https://api.star-history.com/badge?repo=Asymptote-Labs/agent-beacon&type=trending&v=2" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1292351&theme=dark&period=daily&t=1793685827673" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1292351&theme=neutral&period=daily&t=1793685827673" />
+   <img alt="beacon.sh - Open-source self-improving memory for AI coding agents | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1292351&theme=neutral&period=daily&t=1793685827673" />
   </picture>
  </a>
 </p>
+
+⭐ *Help us reach more developers and grow the Beacon community. Star this repo!*
 
 Beacon captures **agent session history** across Claude Code, Cursor, Codex, OpenCode, and 20+ other harnesses, then turns useful workflows, corrections, and debugging patterns into reusable knowledge for future agents.
 

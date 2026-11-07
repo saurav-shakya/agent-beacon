@@ -227,6 +227,42 @@ func TestPlannedInstallActionsSeparatesHookHarnesses(t *testing.T) {
 	}
 }
 
+// The plan names the session sync job only when the install will turn it on or remove it.
+func TestPlannedInstallActionsFollowSessionSync(t *testing.T) {
+	testenv.SetHome(t, t.TempDir())
+	old := endpointOpts
+	t.Cleanup(func() { endpointOpts = old })
+	endpointOpts.userMode, endpointOpts.systemMode = true, false
+	endpointOpts.logPath = filepath.Join(t.TempDir(), "runtime.jsonl")
+	endpointOpts.noStart = false
+
+	plan := func() (units, loads, removals int) {
+		for _, action := range plannedInstallActions(false, service.KindAuto, nil, nil) {
+			switch {
+			case action.Action == "write_unit" && action.Message == "scheduled session sync job":
+				units++
+			case action.Action == "load_service" && action.Message == "start scheduled session sync job":
+				loads++
+			case action.Action == "unload_service" && action.Message == "remove scheduled session sync job if present":
+				removals++
+			}
+		}
+		return units, loads, removals
+	}
+	endpointOpts.sessionSync, endpointOpts.noSessionSync = false, false
+	if u, l, r := plan(); u+l+r != 0 {
+		t.Fatalf("default plan names the session sync job: units=%d loads=%d removals=%d", u, l, r)
+	}
+	endpointOpts.sessionSync = true
+	if u, l, r := plan(); u != 1 || l != 1 || r != 0 {
+		t.Fatalf("--session-sync plan: units=%d loads=%d removals=%d", u, l, r)
+	}
+	endpointOpts.sessionSync, endpointOpts.noSessionSync = false, true
+	if u, l, r := plan(); u != 0 || l != 0 || r != 1 {
+		t.Fatalf("--no-session-sync plan: units=%d loads=%d removals=%d", u, l, r)
+	}
+}
+
 // writeNativeConfigInProcess runs native config repair in this process, the non-root path, so a
 // test that checks what the writers produce does not depend on whether the suite runs as root.
 func writeNativeConfigInProcess(t *testing.T) {
@@ -437,6 +473,76 @@ func TestFalconHECOptionsDefaultIsNil(t *testing.T) {
 	endpointOpts.falconSourcetype = endpointconfig.DefaultFalconSourcetype
 	if got := falconHECOptions(); got != nil {
 		t.Fatalf("falconHECOptions() = %#v, want nil", got)
+	}
+}
+
+func TestOTLPForwardOptions(t *testing.T) {
+	old := endpointOpts
+	t.Cleanup(func() { endpointOpts = old })
+
+	endpointOpts.otlpForwardProtocol = endpointconfig.OTLPForwardProtocolGRPC
+	if got, err := otlpForwardOptions(); err != nil || got != nil {
+		t.Fatalf("otlpForwardOptions() with no flags = %#v, %v; want nil, nil so repair keeps the existing forward", got, err)
+	}
+
+	endpointOpts.otlpForwardEndpoint = "otel.backend.example:4317"
+	endpointOpts.otlpForwardHeaders = []string{"authorization=Bearer a=b", "x-org=example"}
+	got, err := otlpForwardOptions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Endpoint != "otel.backend.example:4317" || got.Headers["authorization"] != "Bearer a=b" || got.Headers["x-org"] != "example" {
+		t.Fatalf("otlpForwardOptions() = %#v", got)
+	}
+
+	endpointOpts.otlpForwardHeaders = []string{"no-equals"}
+	if _, err := otlpForwardOptions(); err == nil {
+		t.Fatal("expected an error for a header without =")
+	}
+
+	endpointOpts.otlpForwardHeaders = nil
+	endpointOpts.noOTLPForward = true
+	if _, err := otlpForwardOptions(); err == nil {
+		t.Fatal("expected --no-otlp-forward with an endpoint to be refused")
+	}
+	endpointOpts.otlpForwardEndpoint = ""
+	got, err = otlpForwardOptions()
+	if err != nil || got == nil || got.Enabled || got.Endpoint != "" {
+		t.Fatalf("--no-otlp-forward = %#v, %v; want an empty forward that removes it", got, err)
+	}
+}
+
+func TestOTLPForwardHarnesses(t *testing.T) {
+	got, err := otlpForwardHarnesses("claude, codex")
+	if err != nil || strings.Join(got, ",") != "claude_code,codex_cli,codex_desktop" {
+		t.Fatalf("otlpForwardHarnesses(claude, codex) = %v, %v", got, err)
+	}
+	if got, err := otlpForwardHarnesses(""); err != nil || got != nil {
+		t.Fatalf("empty = %v, %v; want nil so the default applies", got, err)
+	}
+	// A name Beacon does not know is kept as given, matched against the resource's own name.
+	if got, err := otlpForwardHarnesses("my-agent"); err != nil || strings.Join(got, ",") != "my-agent" {
+		t.Fatalf("otlpForwardHarnesses(my-agent) = %v, %v", got, err)
+	}
+}
+
+// The missing-headers warning prints the whole forward: --otlp-forward-endpoint replaces it, so a
+// command that restated only the headers would drop the protocol and the rest.
+func TestOTLPForwardFlagsRestateTheWholeForward(t *testing.T) {
+	got := otlpForwardFlags(&endpointconfig.OTLPForward{
+		Endpoint:    "https://otel.backend.example",
+		Protocol:    endpointconfig.OTLPForwardProtocolHTTP,
+		Harnesses:   []string{"claude_code"},
+		CAFile:      "/etc/ssl/backend ca.pem",
+		HeaderNames: []string{"authorization", "x-org"},
+	})
+	want := "--otlp-forward-endpoint https://otel.backend.example --otlp-forward-protocol http/protobuf --otlp-forward-harness claude_code" +
+		" --otlp-forward-ca-file '/etc/ssl/backend ca.pem' --otlp-forward-header 'authorization=<value>' --otlp-forward-header 'x-org=<value>'"
+	if got != want {
+		t.Fatalf("otlpForwardFlags =\n  %s\nwant\n  %s", got, want)
+	}
+	if got := otlpForwardFlags(&endpointconfig.OTLPForward{Endpoint: "otel.example:4317", Protocol: "grpc", Harnesses: endpointconfig.DefaultOTLPForwardHarnesses, Insecure: true}); got != "--otlp-forward-endpoint otel.example:4317 --otlp-forward-insecure" {
+		t.Fatalf("defaults not left out: %s", got)
 	}
 }
 

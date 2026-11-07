@@ -543,7 +543,8 @@
                   "guides/jamf-gcs-mdm",
                   "guides/jamf-s3-mdm",
                   "guides/jamf-falcon-mdm",
-                  "guides/jamf-sentinel-mdm"
+                  "guides/jamf-sentinel-mdm",
+                  "guides/workspace-one-sentinel-mdm"
                 ]
               },
               {
@@ -560,6 +561,13 @@
                 "root": "mdm/fleet",
                 "pages": [
                   "guides/fleet-s3-mdm"
+                ]
+              },
+              {
+                "group": "Kandji",
+                "expanded": true,
+                "pages": [
+                  "guides/kandji-otlp-forward-mdm"
                 ]
               }
             ]
@@ -685,6 +693,12 @@
       "cursor",
       "vscode"
     ]
+  },
+  "integrations": {
+    "posthog": {
+      "apiKey": "phc_mAC6ywfI3poAo9dBeuNJUJySdxYdJzvoYapN5Wn9cVN",
+      "apiHost": "https://us.i.posthog.com"
+    }
   },
   "redirects": [
     {

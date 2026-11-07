@@ -418,6 +418,29 @@ case "$INSTALL_ARGS" in
     ;;
 esac
 
+# BEACON_SESSION_SYNC turns the scheduled session sync on or off from MDM; unset keeps the
+# endpoint's own setting, so no flag is passed (the cases above).
+for value in 1 0; do
+  BEACON_BIN="$STUB_BIN" \
+  BEACON_COLLECTOR="/tmp/beacon-otelcol" \
+  BEACON_SESSION_SYNC="$value" \
+  STUB_LOG="$STUB_LOG" \
+  "$INSTALL_SCRIPT"
+
+  case "$value" in
+    1) want_flag="--session-sync" ;;
+    0) want_flag="--no-session-sync" ;;
+  esac
+  INSTALL_ARGS="$(cat "$STUB_LOG")"
+  case "$INSTALL_ARGS" in
+    "endpoint install --system --harness claude,codex --otlp-grpc-port 4317 --otlp-http-port 4318 --collector /tmp/beacon-otelcol $want_flag") ;;
+    *)
+      echo "unexpected session sync install args for BEACON_SESSION_SYNC=$value: $INSTALL_ARGS" >&2
+      exit 1
+      ;;
+  esac
+done
+
 BEACON_BIN="$STUB_BIN" \
 BEACON_KEEP_LOGS="1" \
 BEACON_KEEP_CONFIG="1" \
@@ -1390,7 +1413,9 @@ for expected in \
   'endpoint user-config repair-installed --system --harness claude,codex' \
   'endpoint update install-daemon' \
   'endpoint inventory install-daemon --system' \
-  'endpoint asymptote reconcile --system'
+  'endpoint sessions install-daemon --system' \
+  'endpoint asymptote reconcile --system' \
+  'endpoint sentinel forwarder reconcile --system'
 do
   if ! grep -qxF "$expected" "$POSTINSTALL_BEACON_LOG"; then
     echo "postinstall should run: $expected" >&2
